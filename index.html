@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Alat Komunikasi — AAC Tunawicara</title>
+  <style>
+    :root{
+      --bg: #0f1724;
+      --card: #0b1220;
+      --accent: #06b6d4;
+      --text: #e6eef6;
+      --muted: #98a0aa;
+      --danger: #ef4444;
+      font-family: system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+    body{
+      margin:0;
+      min-height:100vh;
+      background: linear-gradient(180deg,#041226 0%, #072035 100%);
+      color:var(--text);
+      display:flex;
+      align-items:flex-start;
+      justify-content:center;
+      padding:24px;
+    }
+    .app{
+      width:100%;
+      max-width:1100px;
+      display:grid;
+      grid-template-columns: 1fr 420px;
+      gap:20px;
+      align-items:start;
+    }
+    header{
+      grid-column:1/-1;
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      align-items:center;
+    }
+    h1{font-size:20px;margin:0}
+    p.lead{margin:0;color:var(--muted);font-size:13px}
+    .panel{
+      background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border-radius:12px;
+      padding:14px;
+      box-shadow: 0 4px 18px rgba(2,6,23,0.6);
+      border:1px solid rgba(255,255,255,0.03);
+    }
+
+    /* Left: board */
+    .board{
+      display:grid;
+      gap:12px;
+      grid-template-rows:auto 1fr;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns: repeat(auto-fill,minmax(140px,1fr));
+      gap:10px;
+    }
+    .tile{
+      background: linear-gradient(180deg, rgba(6,182,212,0.06), rgba(6,182,212,0.04));
+      border:1px solid rgba(6,182,212,0.12);
+      color:var(--text);
+      padding:12px;
+      border-radius:10px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      align-items:center;
+      justify-content:center;
+      min-height:80px;
+      cursor:pointer;
+      user-select:none;
+      transition:transform .08s ease, box-shadow .08s ease;
+      outline:none;
+    }
+    .tile:active, .tile:focus{ transform: translateY(1px) scale(.998); box-shadow: 0 6px 20px rgba(0,0,0,0.45) inset; }
+    .tile .emoji{font-size:28px}
+    .tile .label{font-size:15px;text-align:center}
+    .controls{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      margin-top:6px;
+    }
+
+    /* Right column: composer */
+    .composer{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      position:sticky;
+      top:20px;
+    }
+    textarea{
+      width:100%;
+      min-height:120px;
+      resize:vertical;
+      padding:12px;
+      border-radius:10px;
+      background:rgba(255,255,255,0.02);
+      border:1px solid rgba(255,255,255,0.04);
+      color:var(--text);
+      font-size:16px;
+      line-height:1.3;
+    }
+    .row{display:flex;gap:8px;align-items:center}
+    select,input[type="range"]{padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:var(--text)}
+    button{
+      background:var(--accent);
+      color:#021019;
+      border:none;padding:10px 12px;border-radius:10px;font-weight:600;cursor:pointer;
+      box-shadow:0 6px 16px rgba(6,182,212,0.12);
+    }
+    button.ghost{background:transparent;color:var(--text);border:1px solid rgba(255,255,255,0.04)}
+    button.danger{background:var(--danger);color:white}
+    .small{padding:8px 10px;font-size:14px}
+    footer.small{grid-column:1/-1;color:var(--muted);font-size:12px;text-align:center;margin-top:6px}
+
+    /* Responsive */
+    @media (max-width:980px){
+      .app{grid-template-columns:1fr; padding-bottom:80px}
+      .composer{position:static}
+    }
+  </style>
+</head>
+<body>
+  <main class="app" role="main" aria-label="Aplikasi Komunikasi untuk Penyandang Tunawicara">
+    <header>
+      <div>
+        <h1>Alat Komunikasi — AAC</h1>
+        <p class="lead">Klik tombol cepat atau ketik pesan — lalu aplikasi akan membacakan untuk Anda.</p>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:13px;color:var(--muted)">Mode: <strong id="modeLabel">Papan Frasa</strong></div>
+      </div>
+    </header>
+
+    <!-- Left panel: Papan frasa -->
+    <section class="panel board" aria-labelledby="boardTitle">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <h2 id="boardTitle" style="font-size:16px;margin:0">Papan Frasa Cepat</h2>
+          <div style="color:var(--muted);font-size:13px">Tombol besar untuk bicara cepat</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button id="addCustomBtn" class="ghost small" aria-haspopup="dialog">Tambah Frasa</button>
+          <button id="resetBtn" class="ghost small" title="Reset frasa bawaan">Reset</button>
+        </div>
+      </div>
+
+      <div class="grid" id="phraseGrid" role="list" aria-label="Daftar frasa cepat">
+        <!-- tiles generated by JS -->
+      </div>
+
+      <div class="controls" style="margin-top:6px">
+        <button id="toggleGridSize" class="ghost small" title="Ubah tata letak">Ubah Tata Letak</button>
+        <button id="exportBtn" class="ghost small" title="Ekspor frasa ke file JSON">Ekspor</button>
+        <button id="importBtn" class="ghost small" title="Impor frasa dari file JSON">Impor</button>
+        <input id="fileInput" type="file" accept=".json" style="display:none" aria-hidden="true">
+      </div>
+    </section>
+
+    <!-- Right panel: Composer -->
+    <aside class="panel composer" aria-labelledby="composerTitle">
+      <div>
+        <h2 id="composerTitle" style="margin:0;font-size:16px">Pengetikan & Pengaturan Suara</h2>
+        <div style="color:var(--muted);font-size:13px">Ketik pesan lalu tekan Speak</div>
+      </div>
+
+      <label for="message" class="sr-only">Pesan</label>
+      <textarea id="message" aria-label="Kotak pesan"></textarea>
+
+      <div class="row">
+        <button id="speakBtn" aria-pressed="false">🔊 Speak</button>
+        <button id="clearBtn" class="ghost small">Clear</button>
+        <button id="copyBtn" class="ghost small">Copy</button>
+      </div>
+
+      <div style="display:flex;gap:8px;flex-direction:column">
+        <label for="voiceSelect" style="font-size:13px;color:var(--muted)">Voice</label>
+        <select id="voiceSelect" aria-label="Pilih suara"></select>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+          <label style="font-size:13px;color:var(--muted)">Rate</label>
+          <input id="rate" type="range" min="0.6" max="1.8" step="0.05" value="1" aria-label="Kecepatan suara">
+          <span id="rateVal" style="min-width:36px;text-align:right">1.00</span>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+          <label style="font-size:13px;color:var(--muted)">Volume</label>
+          <input id="volume" type="range" min="0" max="1" step="0.05" value="1" aria-label="Volume suara">
+          <span id="volVal" style="min-width:36px;text-align:right">1.00</span>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">
+        <button id="startLiveBtn" class="ghost small">Live STT → Teks</button>
+        <button id="speakFromMicBtn" class="ghost small">Mic → Bicara (uji)</button>
+      </div>
+
+      <div style="margin-top:8px;color:var(--muted);font-size:13px">
+        <strong>Catatan:</strong> fitur bicara menggunakan Web Speech API. Beberapa browser tidak mendukung semua fitur.
+      </div>
+    </aside>
+
+    <footer class="small panel" style="text-align:center">
+      Dibuat untuk membantu komunikasi — dapat dimodifikasi. Penyimpanan frase disimpan di browser.
+    </footer>
+
+    <!-- Dialog: Tambah frasa -->
+    <dialog id="phraseDialog" aria-modal="true" style="border-radius:12px;padding:18px;background:var(--card);color:var(--text);border:1px solid rgba(255,255,255,0.04)">
+      <h3 style="margin-top:0">Tambah / Edit Frasa</h3>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <input id="newEmoji" placeholder="Emoji (mis: 😀)" aria-label="Emoji" />
+        <input id="newText" placeholder="Teks frasa, misal: Saya lapar" aria-label="Teks frasa" />
+        <div style="display:flex;gap:8px">
+          <button id="savePhraseBtn">Simpan</button>
+          <button id="cancelPhraseBtn" class="ghost">Batal</button>
+        </div>
+      </div>
+    </dialog>
+
+  </main>
+
+  <script>
+    // ======== Data bawaan (dapat diedit) ========
+    const defaultPhrases = [
+      {emoji:'👋', text:'Halo, nama saya ...'},
+      {emoji:'🍽️', text:'Saya lapar'},
+      {emoji:'🚻', text:'Boleh ke toilet?'},
+      {emoji:'💊', text:'Saya perlu obat'},
+      {emoji:'😴', text:'Saya ingin tidur'},
+      {emoji:'🩺', text:'Ada yang salah, tolong bantu'},
+      {emoji:'💬', text:'Tolong tulis perlahan'},
+      {emoji:'📞', text:'Tolong hubungi keluarga saya'},
+      {emoji:'💧', text:'Saya haus'},
+      {emoji:'🔥', text:'Ada kebakaran / darurat'},
+      {emoji:'➡️', text:'Ikuti saya'},
+      {emoji:'❤️', text:'Terima kasih'},
+    ];
+
+    // ======== Elemen ========
+    const phraseGrid = document.getElementById('phraseGrid');
+    const addCustomBtn = document.getElementById('addCustomBtn');
+    const phraseDialog = document.getElementById('phraseDialog');
+    const newEmoji = document.getElementById('newEmoji');
+    const newText = document.getElementById('newText');
+    const savePhraseBtn = document.getElementById('savePhraseBtn');
+    const cancelPhraseBtn = document.getElementById('cancelPhraseBtn');
+    const message = document.getElementById('message');
+    const speakBtn = document.getElementById('speakBtn');
+    const voiceSelect = document.getElementById('voiceSelect');
+    const rate = document.getElementById('rate');
+    const rateVal = document.getElementById('rateVal');
+    const volume = document.getElementById('volume');
+    const volVal = document.getElementById('volVal');
+    const clearBtn = document.getElementById('clearBtn');
+    const copyBtn = document
