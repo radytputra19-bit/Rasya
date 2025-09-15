@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Alat Komunikasi — AAC Tunawicara</title>
+  <style>
+    :root{
+      --bg: #0f1724;
+      --card: #0b1220;
+      --accent: #06b6d4;
+      --text: #e6eef6;
+      --muted: #98a0aa;
+      --danger: #ef4444;
+      font-family: system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+    body{
+      margin:0;
+      min-height:100vh;
+      background: linear-gradient(180deg,#041226 0%, #072035 100%);
+      color:var(--text);
+      display:flex;
+      align-items:flex-start;
+      justify-content:center;
+      padding:24px;
+    }
+    .app{
+      width:100%;
+      max-width:1100px;
+      display:grid;
+      grid-template-columns: 1fr 420px;
+      gap:20px;
+      align-items:start;
+    }
+    header{
+      grid-column:1/-1;
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      align-items:center;
+    }
+    h1{font-size:20px;margin:0}
+    p.lead{margin:0;color:var(--muted);font-size:13px}
+    .panel{
+      background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border-radius:12px;
+      padding:14px;
+      box-shadow: 0 4px 18px rgba(2,6,23,0.6);
+      border:1px solid rgba(255,255,255,0.03);
+    }
+
+    /* Left: board */
+    .board{
+      display:grid;
+      gap:12px;
+      grid-template-rows:auto 1fr;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns: repeat(auto-fill,minmax(140px,1fr));
+      gap:10px;
+    }
+    .tile{
+      background: linear-gradient(180deg, rgba(6,182,212,0.06), rgba(6,182,212,0.04));
+      border:1px solid rgba(6,182,212,0.12);
+      color:var(--text);
+      padding:12px;
+      border-radius:10px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      align-items:center;
+      justify-content:center;
+      min-height:80px;
+      cursor:pointer;
+      user-select:none;
+      transition:transform .08s ease, box-shadow .08s ease;
+      outline:none;
+    }
+    .tile:active, .tile:focus{ transform: translateY(1px) scale(.998); box-shadow: 0 6px 20px rgba(0,0,0,0.45) inset; }
+    .tile .emoji{font-size:28px}
+    .tile .label{font-size:15px;text-align:center}
+    .controls{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      margin-top:6px;
+    }
+
+    /* Right column: composer */
+    .composer{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      position:sticky;
+      top:20px;
+    }
+    textarea{
+      width:100%;
+      min-height:120px;
+      resize:vertical;
+      padding:12px;
+      border-radius:10px;
+      background:rgba(255,255,255,0.02);
+      border:1px solid rgba(255,255,255,0.04);
+      color:var(--text);
+      font-size:16px;
+      line-height:1.3;
+    }
+    .row{display:flex;gap:8px;align-items:center}
+    select,input[type="range"]{padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:var(--text)}
+    button{
+      background:var(--accent);
+      color:#021019;
+      border:none;padding:10px 12px;border-radius:10px;font-weight:600;cursor:pointer;
+      box-shadow:0 6px 16px rgba(6,182,212,0.12);
+    }
+    button.ghost{background:transparent;color:var(--text);border:1px solid rgba(255,255,255,0.04)}
+    button.danger{background:var(--danger);color:white}
+    .small{padding:8px 10px;font-size:14px}
+    footer.small{grid-column:1/-1;color:var(--muted);font-size:12px;text-align:center;margin-top:6px}
+
+    /* Responsive */
+    @media (max-width:980px){
+      .app{grid-template-columns:1fr; padding-bottom:80px}
+      .composer{position:static}
+    }
+  </style>
+</head>
+<body>
+  <main class="app" role="main" aria-label="Aplikasi Komunikasi untuk Penyandang Tunawicara">
+    <header>
+      <div>
+        <h1>Alat Komunikasi — AAC</h1>
+        <p class="lead">Klik tombol cepat atau ketik pesan — lalu aplikasi akan membacakan untuk Anda.</p>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:13px;color:var(--muted)">Mode: <strong id="modeLabel">Papan Frasa</strong></div>
+      </div>
+    </header>
+
+    <!-- Left panel: Papan frasa -->
+    <section class="panel board" aria-labelledby="boardTitle">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <h2 id="boardTitle" style="font-size:16px;margin:0">Papan Frasa Cepat</h2>
+          <div style="color:var(--muted);font-size:13px">Tombol besar untuk bicara cepat</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button id="addCustomBtn" class="ghost small" aria-haspopup="dialog">Tambah Frasa</button>
+          <button id="resetBtn" class="ghost small" title="Reset frasa bawaan">Reset</button>
+        </div>
+      </div>
+
+      <div class="grid" id="phraseGrid" role="list" aria-label="Daftar frasa cepat">
+        <!-- tiles generated by JS -->
+      </div>
+
+      <div class="controls" style="margin-top:6px">
+        <button id="toggleGridSize" class="ghost small" title="Ubah tata letak">Ubah Tata Letak</button>
+        <button id="exportBtn" class="ghost small" title="Ekspor frasa ke file JSON">Ekspor</button>
+        <button id="importBtn" class="ghost small" title="Impor frasa dari file JSON">Impor</button>
+        <input id="fileInput" type="file" accept=".json" style="display:none" aria-hidden="true">
+      </div>
+    </section>
+
+    <!-- Right panel: Composer -->
+    <aside class="panel composer" aria-labelledby="composerTitle">
+      <div>
+        <h2 id="composerTitle" style="margin:0;font-size:16px">Pengetikan & Pengaturan Suara</h2>
+        <div style="color:var(--muted);font-size:13px">Ketik pesan lalu tekan Speak</div>
+      </div>
+
+      <label for="message" class="sr-only">Pesan</label>
+      <textarea id="message" aria-label="Kotak pesan"></textarea>
+
+      <div class="row">
+        <button id="speakBtn" aria-pressed="false">🔊 Speak</button>
+        <button id="clearBtn" class="ghost small">Clear</button>
+        <button id="copyBtn" class="ghost small">Copy</button>
+      </div>
+
+      <div style="display:flex;gap:8px;flex-direction:column">
+        <label for="voiceSelect" style="font-size:13px;color:var(--muted)">Voice</label>
+        <select id="voiceSelect" aria-label="Pilih suara"></select>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+          <label style="font-size:13px;color:var(--muted)">Rate</label>
+          <input id="rate" type="range" min="0.6" max="1.8" step="0.05" value="1" aria-label="Kecepatan suara">
+          <span id="rateVal" style="min-width:36px;text-align:right">1.00</span>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+          <label style="font-size:13px;color:var(--muted)">Volume</label>
+          <input id="volume" type="range" min="0" max="1" step="0.05" value="1" aria-label="Volume suara">
+          <span id="volVal" style="min-width:36px;text-align:right">1.00</span>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">
+        <button id="startLiveBtn" class="ghost small">Live STT → Teks</button>
+        <button id="speakFromMicBtn" class="ghost small">Mic → Bicara (uji)</button>
+      </div>
+
+      <div style="margin-top:8px;color:var(--muted);font-size:13px">
+        <strong>Catatan:</strong> fitur bicara menggunakan Web Speech API. Beberapa browser tidak mendukung semua fitur.
+      </div>
+    </aside>
+
+    <footer class="small panel" style="text-align:center">
+      Dibuat untuk membantu komunikasi — dapat dimodifikasi. Penyimpanan frase disimpan di browser.
+    </footer>
+
+    <!-- Dialog: Tambah frasa -->
+    <dialog id="phraseDialog" aria-modal="true" style="border-radius:12px;padding:18px;background:var(--card);color:var(--text);border:1px solid rgba(255,255,255,0.04)">
+      <h3 style="margin-top:0">Tambah / Edit Frasa</h3>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <input id="newEmoji" placeholder="Emoji (mis: 😀)" aria-label="Emoji" />
+        <input id="newText" placeholder="Teks frasa, misal: Saya lapar" aria-label="Teks frasa" />
+        <div style="display:flex;gap:8px">
+          <button id="savePhraseBtn">Simpan</button>
+          <button id="cancelPhraseBtn" class="ghost">Batal</button>
+        </div>
+      </div>
+    </dialog>
+
+  </main>
+
+  <script>
+    // ======== Data bawaan (dapat diedit) ========
+    const defaultPhrases = [
+      {emoji:'👋', text:'Halo, nama saya ...'},
+      {emoji:'🍽️', text:'Saya lapar'},
+      {emoji:'🚻', text:'Boleh ke toilet?'},
+      {emoji:'💊', text:'Saya perlu obat'},
+      {emoji:'😴', text:'Saya ingin tidur'},
+      {emoji:'🩺', text:'Ada yang salah, tolong bantu'},
+      {emoji:'💬', text:'Tolong tulis perlahan'},
+      {emoji:'📞', text:'Tolong hubungi keluarga saya'},
+      {emoji:'💧', text:'Saya haus'},
+      {emoji:'🔥', text:'Ada kebakaran / darurat'},
+      {emoji:'➡️', text:'Ikuti saya'},
+      {emoji:'❤️', text:'Terima kasih'},
+    ];
+
+    // ======== Elemen ========
+    const phraseGrid = document.getElementById('phraseGrid');
+    const addCustomBtn = document.getElementById('addCustomBtn');
+    const phraseDialog = document.getElementById('phraseDialog');
+    const newEmoji = document.getElementById('newEmoji');
+    const newText = document.getElementById('newText');
+    const savePhraseBtn = document.getElementById('savePhraseBtn');
+    const cancelPhraseBtn = document.getElementById('cancelPhraseBtn');
+    const message = document.getElementById('message');
+    const speakBtn = document.getElementById('speakBtn');
+    const voiceSelect = document.getElementById('voiceSelect');
+    const rate = document.getElementById('rate');
+    const rateVal = document.getElementById('rateVal');
+    const volume = document.getElementById('volume');
+    const volVal = document.getElementById('volVal');
+    const clearBtn = document.getElementById('clearBtn');
+    const copyBtn = document.getElementById('copyBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const exportBtn = document.getElementById('exportBtn');
+    const importBtn = document.getElementById('importBtn');
+    const fileInput = document.getElementById('fileInput');
+    const toggleGridSize = document.getElementById('toggleGridSize');
+    const startLiveBtn = document.getElementById('startLiveBtn');
+    const speakFromMicBtn = document.getElementById('speakFromMicBtn');
+    const modeLabel = document.getElementById('modeLabel');
+
+    // ======== Storage helpers ========
+    const STORAGE_KEY = 'aac_phrases_v1';
+    function loadPhrases(){
+      try{
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if(raw) return JSON.parse(raw);
+      }catch(e){ console.warn(e) }
+      return defaultPhrases.slice();
+    }
+    function savePhrases(list){
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+    }
+
+    // ======== Render grid ========
+    let phrases = loadPhrases();
+    function renderGrid(){
+      phraseGrid.innerHTML = '';
+      phrases.forEach((p, idx) => {
+        const tile = document.createElement('button');
+        tile.className = 'tile';
+        tile.type = 'button';
+        tile.role = 'listitem';
+        tile.ariaLabel = 'Frasa: ' + p.text;
+        tile.innerHTML = `<div class="emoji" aria-hidden="true">${p.emoji||'🔈'}</div>
+                          <div class="label">${p.text}</div>
+                          <div style="display:flex;gap:6px;margin-top:6px">
+                            <button data-action="speak" data-idx="${idx}" title="Bacakan" class="small" style="background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--text)">🔊</button>
+                            <button data-action="edit" data-idx="${idx}" title="Edit" class="small" style="background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--text)">✏️</button>
+                            <button data-action="del" data-idx="${idx}" title="Hapus" class="small" style="background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--text)">🗑️</button>
+                          </div>`;
+        // click speak on whole tile
+        tile.addEventListener('click', (ev) => {
+          // ignore when clicking inner action buttons (they will bubble)
+          const target = ev.target;
+          if(target.closest('button[data-action]')) return;
+          speakText(p.text);
+        });
+        // action buttons
+        tile.querySelectorAll('button[data-action]').forEach(btn=>{
+          const action = btn.getAttribute('data-action');
+          const i = parseInt(btn.getAttribute('data-idx'),10);
+          btn.addEventListener('click', (e)=>{
+            e.stopPropagation();
+            if(action === 'speak') speakText(phrases[i].text);
+            if(action === 'edit') openEditDialog(i);
+            if(action === 'del') {
+              if(confirm('Hapus frasa ini?')) {
+                phrases.splice(i,1); savePhrases(phrases); renderGrid();
+              }
+            }
+          });
+        });
+
+        phraseGrid.appendChild(tile);
+      });
+    }
+
+    // ======== Dialog handlers ========
+    let editingIndex = -1;
+    addCustomBtn.addEventListener('click', ()=>{
+      editingIndex = -1;
+      newEmoji.value = '';
+      newText.value = '';
+      phraseDialog.showModal();
+    });
+    cancelPhraseBtn.addEventListener('click', ()=> phraseDialog.close());
+    savePhraseBtn.addEventListener('click', ()=>{
+      const text = newText.value.trim();
+      if(!text){ alert('Isi teks frasa.'); return; }
+      const emoji = newEmoji.value || '🔈';
+      if(editingIndex >= 0){
+        phrases[editingIndex] = {emoji, text};
+      } else {
+        phrases.unshift({emoji,text});
+      }
+      savePhrases(phrases);
+      phraseDialog.close();
+      renderGrid();
+    });
+    function openEditDialog(i){
+      editingIndex = i;
+      newEmoji.value = phrases[i].emoji || '';
+      newText.value = phrases[i].text || '';
+      phraseDialog.showModal();
+    }
+
+    // ======== Speech synthesis ========
+    let synth = window.speechSynthesis;
+    function populateVoices(){
+      const voices = synth.getVoices();
+      voiceSelect.innerHTML = '';
+      voices.forEach((v, i) => {
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.textContent = `${v.name} — ${v.lang}`;
+        voiceSelect.appendChild(opt);
+      });
+      // select default voice (try to pick local language)
+      // best-effort: prefer Indonesian 'id' if present
+      const idVoice = voices.findIndex(v => v.lang && v.lang.toLowerCase().startsWith('id'));
+      if(idVoice >= 0) voiceSelect.value = idVoice;
+      if(voiceSelect.options.length===0){
+        voiceSelect.innerHTML = '<option value="-1">No voices available</option>';
+      }
+    }
+    // voiceschanged supported in some browsers
+    if(speechSynthesis){
+      populateVoices();
+      speechSynthesis.onvoiceschanged = populateVoices;
+    }
+
+    function speakText(txt){
+      if(!('speechSynthesis' in window)){
+        alert('Browser Anda tidak mendukung fitur text-to-speech.');
+        return;
+      }
+      if(!txt || !txt.trim()) return;
+      const ut = new SpeechSynthesisUtterance(txt);
+      const voices = speechSynthesis.getVoices();
+      const sel = parseInt(voiceSelect.value,10);
+      if(!isNaN(sel) && voices[sel]) ut.voice = voices[sel];
+      ut.rate = parseFloat(rate.value) || 1;
+      ut.volume = parseFloat(volume.value) || 1;
+      speechSynthesis.cancel(); // stop previous
+      speechSynthesis.speak(ut);
+      // visual feedback
+      modeLabel.textContent = 'Membacakan...';
+      ut.onend = () => { modeLabel.textContent = 'Papan Frasa'; }
+    }
+
+    // Speak button (from textarea)
+    speakBtn.addEventListener('click', ()=> {
+      speakText(message.value || message.placeholder || '—');
+    });
+
+    clearBtn.addEventListener('click', ()=> message.value='');
+    copyBtn.addEventListener('click', async ()=>{
+      try{
+        await navigator.clipboard.writeText(message.value);
+        alert('Teks disalin ke clipboard.');
+      }catch(e){ alert('Gagal menyalin.'); }
+    });
+
+    rate.addEventListener('input', ()=> rateVal.textContent = parseFloat(rate.value).toFixed(2));
+    volume.addEventListener('input', ()=> volVal.textContent = parseFloat(volume.value).toFixed(2));
+
+    // Reset to default phrases
+    resetBtn.addEventListener('click', ()=>{
+      if(confirm('Kembalikan frasa ke bawaan? Semua frasa kustom akan hilang.')){
+        phrases = defaultPhrases.slice();
+        savePhrases(phrases);
+        renderGrid();
+      }
+    });
+
+    // Export/Import phrases as JSON
+    exportBtn.addEventListener('click', ()=>{
+      const blob = new Blob([JSON.stringify(phrases, null, 2)], {type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'phrases-aac.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+    importBtn.addEventListener('click', ()=> fileInput.click());
+    fileInput.addEventListener('change', (e)=>{
+      const f = e.target.files[0];
+      if(!f) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        try{
+          const arr = JSON.parse(ev.target.result);
+          if(Array.isArray(arr)){
+            phrases = arr;
+            savePhrases(phrases);
+            renderGrid();
+            alert('Impor berhasil.');
+          } else alert('Format file tidak dikenali.');
+        }catch(err){ alert('File tidak valid'); }
+      };
+      reader.readAsText(f);
+    });
+
+    toggleGridSize.addEventListener('click', ()=>{
+      const grid = document.querySelector('.grid');
+      const cols = getComputedStyle(grid).gridTemplateColumns;
+      if(cols.includes('140px')){
+        grid.style.gridTemplateColumns = 'repeat(auto-fill,minmax(100px,1fr))';
+      } else {
+        grid.style.gridTemplateColumns = 'repeat(auto-fill,minmax(140px,1fr))';
+      }
+    });
+
+    // ======== Live Speech-to-Text (optional) ========
+    let recognition = null;
+    let recognizing = false;
+    if('webkitSpeechRecognition' in window || 'SpeechRecognition' in window){
+      const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognition = new Rec();
+      recognition.lang = 'id-ID';
+      recognition.interimResults = true;
+      recognition.continuous = false;
+      recognition.onresult = (ev) => {
+        let transcript = '';
+        for(let i=0;i<ev.results.length;i++){
+          transcript += ev.results[i][0].transcript;
+        }
+        message.value = transcript;
+      };
+      recognition.onend = () => { recognizing = false; startLiveBtn.textContent = 'Live STT → Teks'; startLiveBtn.classList.remove('danger'); };
+      recognition.onerror = (ev) => { console.error(ev); alert('STT error: ' + ev.error); recognizing = false; startLiveBtn.textContent = 'Live STT → Teks'; startLiveBtn.classList.remove('danger'); };
+    } else {
+      startLiveBtn.disabled = true;
+      startLiveBtn.title = 'Browser tidak mendukung Speech Recognition';
+    }
+
+    startLiveBtn.addEventListener('click', ()=>{
+      if(!recognition) return alert('Speech Recognition tidak tersedia pada browser ini.');
+      if(!recognizing){
+        try{
+          recognition.start();
+          recognizing = true;
+          startLiveBtn.textContent = 'Mendengarkan...';
+          startLiveBtn.classList.add('danger');
+        }catch(e){ console.error(e); alert('Gagal memulai STT.'); }
+      } else {
+        recognition.stop();
+        recognizing = false;
+        startLiveBtn.textContent = 'Live STT → Teks';
+        startLiveBtn.classList.remove('danger');
+      }
+    });
+
+    // Optional: capture mic and immediately speak recognized text (useful untuk uji)
+    speakFromMicBtn.addEventListener('click', async ()=>{
+      if(!recognition) return alert('Speech Recognition tidak tersedia.');
+      recognition.onresult = (ev) => {
+     let transcript = '';
+        for(let i=0;i<ev.results.length;i++){
+          transcript += ev.results[i][0].transcript;
+        }
+        speakText(transcript);
+      };
+      try{
+        recognition.start();
+      }catch(e){ console.warn(e); }
+    });
+
+    // ======== Keyboard shortcuts ========
+    document.addEventListener('keydown', (e)=>{
+      // Ctrl+Enter to speak typed message
+      if((e.ctrlKey || e.metaKey) && e.key === 'Enter'){ e.preventDefault(); speakText(message.value); }
+      // Ctrl+1..9 quick speak phrase
+      if(e.ctrlKey && e.key >= '1' && e.key <= '9'){
+        const idx = parseInt(e.key,10)-1;
+        if(phrases[idx]) speakText(phrases[idx].text);
+      }
+    });
+
+    // ======== Init ========
+    renderGrid();
+    rateVal.textContent = rate.value;
+    volVal.textContent = volume.value;
+
+    // Try populate voices after slight delay in some browsers
+    setTimeout(()=> {
+      if(speechSynthesis && !speechSynthesis.getVoices().length){
+        // try again later
+        speechSynthesis.onvoiceschanged = populateVoices;
+      } else populateVoices();
+    }, 250);
+
+    // small accessibility: focus outlines visible on keyboard navigation
+    document.addEventListener('keyup', (e)=>{
+      if(e.key === 'Tab') document.body.classList.add('show-focus');
+    });
+
+    // inform about lack of support for some features
+    if(!('speechSynthesis' in window)) {
+      console.warn('speechSynthesis not supported');
+      // degrade gracefully: disable speak controls
+      speakBtn.disabled = true;
+      speakBtn.title = 'Text-to-Speech tidak tersedia di browser ini';
+    }
+  </script>
+</body>
+</html>
